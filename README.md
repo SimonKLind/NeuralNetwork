@@ -10,6 +10,7 @@ Changes from First Attempt:
   - SoftMax gradient is fixed
   - Additional classes Matrix and Vector have been written to simplify a lot of the "heavy lifting"
   - Addition Net class has been made to make layers a bit more manageable
+  - Weight initialization has been fixed
   
 At its current state it gets a bit more than 40% on validation set with two layers, BatchNorm, ReLU, and SoftMax.
 
