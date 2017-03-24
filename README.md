@@ -13,7 +13,7 @@ Changes from First Attempt:
   
 At its current state it gets a bit more than 40% on validation set with two layers, BatchNorm, ReLU, and SoftMax.
 
-It's still not perfect though...
+It's still not perfect though, according to the folks behind cs231n (The Stanford course I'm following to learn this stuff) you should be able to get over 50% with this setup.
 
 TODO:
  - Load data into single 50000*3072 matrix instead of 5 matrices.
