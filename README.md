@@ -27,7 +27,7 @@ At its current state it gets a bit more than 40% on validation set with two laye
 
 It's still not perfect though, according to the folks behind cs231n (The Stanford course I'm following to learn this stuff) you should be able to get over 50% with this setup, with some hyperparameter tweaking.
 
-TODO:
+# TODO:
  - Add functionality to save Net params
  - Implement better parameter update function (e.g. adagrad or some other better method)
  - Add more layers
