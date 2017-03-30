@@ -12,9 +12,9 @@ class Net{
 	int depth, current;
 	double learnRate = 0.001;
 	double regStrength = 0.00001;
-	double learnRateDecay = 0.999;
+	double learnRateDecay = 0.9999;
 	int batchSize = 200;
-	int num_iter = 1000;
+	int num_iter = 5000;
 
 public:
 
@@ -47,41 +47,7 @@ public:
 		learnRate *= learnRateDecay;
 	}
 
-	void train(Matrix &data, Vector &labels){
-		Vector current;
-		int correct = 0, guess;
-		double loss = 0, score;
-		for(int y=0; y<data.yDim(); ++y){
-			current.copy(data[y]);
-			// current = data[y];
-			lossFunc->setCorrect(labels[y]);
-
-			for(int i=0; i<depth; ++i) layers[i]->forward(current);
-			lossFunc->forward(current);
-
-			score = current[0];
-			guess = 0;
-			for(int i=1; i<current.length(); ++i){
-				if(current[i] > score){
-					score = current[i];
-					guess = i;
-				}
-			}
-
-			if(guess == labels[y]) ++correct;
-
-			current.fill(0);
-
-			lossFunc->backward(current);
-			loss += lossFunc->getLoss();
-			for(int i=depth-1; i>=0; --i) layers[i]->backward(current);
-
-			if((y+1)%10 == 0) update();
-		}
-		std::cout << "Loss: " << loss << " Stats: " << (double)correct/100 << '\n';
-	}
-
-	double validate(Matrix &valid, Vector &labels){
+	/*double validate(Matrix &valid, Vector &labels){
 		int guess, correct = 0, index;
 		std::random_device rd;
 		std::mt19937 rand(rd());
@@ -91,7 +57,7 @@ public:
 			if(guess == (int)labels[index]) ++correct;
 		}
 		return (double)correct/10;
-	}
+	}*/
 
 	void train(Matrix &data, Vector &labels, Matrix &valid, Vector &validLabels){
 		Vector current;
@@ -99,16 +65,16 @@ public:
 		std::mt19937 rand(rd());
 		double score, loss = 0, validPercent;
 		int guess, correct = 0;
+		// for(int i=0; i<depth; ++i) layers[i]->isTraining(true);
 		for(int i=0, index; i<num_iter*batchSize; ++i){
 			index = rand()%data.yDim();
 			current.copy(data[index]);
-			// current = data[index];
 			lossFunc->setCorrect(labels[index]);
 			
 			for(int j=0; j<depth; ++j) layers[j]->forward(current);
 			lossFunc->forward(current);
 			
-			score = current[0];
+			/*score = current[0];
 			guess = 0;
 			for(int j=1; j<current.length(); ++j){
 				if(current[j] > score){
@@ -117,7 +83,7 @@ public:
 				}
 			}
 			
-			if(guess == (int)labels[index]) ++correct;
+			if(guess == (int)labels[index]) ++correct;*/
 
 			current.fill(0);
 			
@@ -127,15 +93,21 @@ public:
 			
 			if((i+1)%batchSize == 0){
 				update();
-				validPercent = validate(valid, validLabels);
-				std::cout << "Batch Loss: " << (double)loss/batchSize << 
-								"\nTest Accuracy: " << (double)100.0*correct/batchSize <<
-								"\nValidation Accuracy: " << validPercent <<
+				// validPercent = validate(valid, validLabels);
+				std::cout << (i+1)/batchSize << 
+								"\nBatch Loss: " << (double)loss/batchSize << 
+								// "\nTest Accuracy: " << (double)100.0*correct/batchSize <<
+								// "\nValidation Accuracy: " << validPercent <<
 								"\nLearn Rate: " << learnRate << "\n\n";
-				correct = 0;
+				// correct = 0;
+				if((i+1)/batchSize == num_iter>>1){
+					for(int i=0; i<depth; ++i) layers[i]->isTraining(true);
+					std::cout << "Applying dropout\n";
+				}
 				loss = 0;
 			}
 		}
+		for(int i=0; i<depth; ++i) layers[i]->isTraining(false);
 	}
 
 	~Net(){

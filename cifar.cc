@@ -69,14 +69,13 @@ void normalize(){
 int main(){
 	getData();
 	normalize();
-	Net net(new SoftMax(10), 6);
+	Net net(new SoftMax(10), 5);
 	net.push(new FullyConn(3072, 200));
 	net.push(new BatchNorm(200));
 	net.push(new ReLU(200));
+	net.push(new DropOut(200, 0.5));
 	net.push(new FullyConn(200, 10));
 	net.push(new BatchNorm(10));
-	net.push(new ReLU(10));
 	net.train(train, trainLabels, valid, validLabels);
-	// net.train(train, trainLabels);
 	testNet(net);
 }

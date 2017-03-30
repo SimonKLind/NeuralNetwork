@@ -7,16 +7,24 @@
 
 #include "Matrix.h"
 
+#define RMSPROP
+// #define ADAM
+
 class Layer{
 
 protected:
 	Vector latestIn;
 	int in, out;
+	bool training;
 
 public:
 
 	Layer(int inDim, int outDim): in(inDim), out(outDim){
 		latestIn.make(inDim);
+	}
+
+	void isTraining(bool b){
+		training = b;
 	}
 
 	virtual void forward(Vector &input) = 0;
@@ -29,6 +37,13 @@ class FullyConn: public Layer{
 	Matrix gradients;
 	Vector biases;
 	Vector biasGrads;
+	#ifdef RMSPROP
+		Matrix cache;
+	#elif
+		Matrix m;
+		Matrix v;
+		double b1, b2;
+	#endif
 
 public:
 
@@ -40,15 +55,26 @@ public:
 		biases.fill(0);
 		biasGrads.make(outDim);
 		biasGrads.fill(0);
-		// std::cout << "Hej\n";
 		weights.make(inDim, outDim);
 		gradients.make(inDim, outDim);
+		#ifdef RMSPROP
+			cache.make(inDim, outDim);
+		#elif
+			m.make(inDim, outDim);
+			v.make(inDim, outDim);
+			b1=b2=1;
+		#endif
 		double rootN = sqrt((double)2/inDim);
 		for(int y=0; y<outDim; ++y){
 			for(int x=0; x<inDim; ++x){
-				// weights(y, x) = (int)rand()%inDim*sqrt((double)2/inDim);
 				weights(y, x) = dist(rand)*rootN;
 				gradients(y, x) = 0;
+				#ifdef RMSPROP
+					cache(y, x) = 0;
+				#elif
+					m(y, x) = 0;
+					v(y, x) = 0;
+				#endif
 			}
 		}
 	}
@@ -72,14 +98,24 @@ public:
 	}
 
 	void update(double learnRate, double regStrength){
+		double momentum, velocity;
 		for(int y=0; y<this->out; ++y){
 			for(int x=0; x<this->in; ++x){
-				// std::cout << weights(y, x) << " -> ";
-				weights(y, x) -= gradients(y, x)*learnRate + weights(y, x)*regStrength;
-				// std::cout << weights(y, x) << " : " << gradients(y, x) << '\n';
+				#ifdef RMSPROP
+					cache(y, x) = 0.99*cache(y, x) + 0.01*gradients(y, x)*gradients(y, x);
+					weights(y, x) -= learnRate*gradients(y, x)/(sqrt(cache(y, x)) + 0.00000001) + weights(y, x)*regStrength;
+				#elif
+					m(y, x) = 0.9*m(y, x) + 0.1*gradients(y, x);
+					v(y, x) = 0.999*v(y, x) + 0.001*gradients(y, x)*gradients(y, x);
+					b1 *= 0.9;
+					b2 *= 0.999;
+					momentum = m(y, x)/(1-b1);
+					velocity = v(y, x)/(1-b2);
+					weights(y, x) -= learnRate*momentum/(sqrt(velocity)+0.00000001) + weights(y, x)*regStrength;
+				#endif
 				gradients(y, x) = 0;
 			}
-			biases[y] -= biasGrads[y]*learnRate/* + biases[y]*regStrength*/;
+			biases[y] -= biasGrads[y]*learnRate;
 		}
 	}
 };
@@ -92,6 +128,12 @@ class BatchNorm: public Layer{
 	double y, b;
 	double dy, db;
 	Vector out;
+	#ifdef RMSPROP
+		double cache;
+	#elif
+		double m, v;
+		double b1, b2;
+	#endif
 
 	double sumGlobal, sumGxOut;
 
@@ -110,6 +152,12 @@ class BatchNorm: public Layer{
 public:
 
 	BatchNorm(int inDim): Layer(inDim, inDim){
+		#ifdef RMSPROP
+			cache=0;
+		#elif
+			b1=b2=1;
+			v=m=0;
+		#endif
 		y=1;
 		b=dy=db=0;
 		out.make(inDim);
@@ -143,8 +191,20 @@ public:
 	}
 
 	void update(double learnRate, double regStrength){
-		y -= dy*learnRate+y*regStrength;
-		b -= db*learnRate/*+b*regStrength*/;
+		#ifdef RMSPROP
+			cache = 0.99*cache + 0.01*dy*dy;
+			y -= learnRate*dy/(sqrt(cache) + 0.0000001) + y*regStrength;
+		#elif
+			double momentum, velocity;
+			m = 0.9*m + 0.1*dy;
+			v = 0.999*v + 0.001*dy*dy;
+			b1 *= 0.9;
+			b2 *= 0.999;
+			momentum = m/(1-b1);
+			velocity = v/(1-b2);
+			y -= learnRate*momentum/(sqrt(velocity) + 0.00000001) + y*regStrength;
+		#endif
+		b -= db*learnRate;
 		dy = db = 0;
 	}
 };
@@ -164,6 +224,32 @@ public:
 
 	void backward(Vector &grads){
 		grads *= this->latestIn;
+	}
+};
+
+class DropOut: public Layer{
+	std::random_device rd;
+	std::mt19937 rand;
+	double p;
+
+public:
+
+	DropOut(int inDim, double probability): Layer(inDim, inDim), p(probability){
+		rand = std::mt19937(rd());
+		for(int i=0; i<this->in; ++i) this->latestIn[i] = 1;
+	}
+
+	void forward(Vector &input){
+		if(!this->training) return;
+		for(int i=0; i<this->in; ++i){
+			this->latestIn[i] = ((double)rand()/rand.max() < p) ? 1/p : 0;
+			input[i] *= this->latestIn[i];
+		}
+	}
+
+	void backward(Vector &grads){
+		// for(int i=0; i<this->in; ++i) if(this->latestIn[i] == 0) grads[i] = 0;
+		for(int i=0; i<this->in; ++i) grads[i] *= this->latestIn[i];
 	}
 };
 
