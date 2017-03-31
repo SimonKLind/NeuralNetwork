@@ -39,7 +39,7 @@ class FullyConn: public Layer{
 	Vector biasGrads;
 	#ifdef RMSPROP
 		Matrix cache;
-	#elif
+	#else
 		Matrix m;
 		Matrix v;
 		double b1, b2;
@@ -59,7 +59,7 @@ public:
 		gradients.make(inDim, outDim);
 		#ifdef RMSPROP
 			cache.make(inDim, outDim);
-		#elif
+		#else
 			m.make(inDim, outDim);
 			v.make(inDim, outDim);
 			b1=b2=1;
@@ -71,7 +71,7 @@ public:
 				gradients(y, x) = 0;
 				#ifdef RMSPROP
 					cache(y, x) = 0;
-				#elif
+				#else
 					m(y, x) = 0;
 					v(y, x) = 0;
 				#endif
@@ -104,7 +104,7 @@ public:
 				#ifdef RMSPROP
 					cache(y, x) = 0.99*cache(y, x) + 0.01*gradients(y, x)*gradients(y, x);
 					weights(y, x) -= learnRate*gradients(y, x)/(sqrt(cache(y, x)) + 0.00000001) + weights(y, x)*regStrength;
-				#elif
+				#else
 					m(y, x) = 0.9*m(y, x) + 0.1*gradients(y, x);
 					v(y, x) = 0.999*v(y, x) + 0.001*gradients(y, x)*gradients(y, x);
 					b1 *= 0.9;
@@ -130,7 +130,7 @@ class BatchNorm: public Layer{
 	Vector out;
 	#ifdef RMSPROP
 		double cache;
-	#elif
+	#else
 		double m, v;
 		double b1, b2;
 	#endif
@@ -154,7 +154,7 @@ public:
 	BatchNorm(int inDim): Layer(inDim, inDim){
 		#ifdef RMSPROP
 			cache=0;
-		#elif
+		#else
 			b1=b2=1;
 			v=m=0;
 		#endif
@@ -194,7 +194,7 @@ public:
 		#ifdef RMSPROP
 			cache = 0.99*cache + 0.01*dy*dy;
 			y -= learnRate*dy/(sqrt(cache) + 0.0000001) + y*regStrength;
-		#elif
+		#else
 			double momentum, velocity;
 			m = 0.9*m + 0.1*dy;
 			v = 0.999*v + 0.001*dy*dy;
