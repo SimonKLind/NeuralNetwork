@@ -36,7 +36,3 @@ It's still not perfect though, according to the folks behind cs231n (The Stanfor
 
 # TODO:
  - COMMENT
- - Add functionality to save Net params
- - Add more layers
-    - Convolution (As soon as i find time to learn about it)
-    - Pooling (As soon as i find time to learn about it)
